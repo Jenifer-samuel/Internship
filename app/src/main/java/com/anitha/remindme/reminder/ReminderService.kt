@@ -8,6 +8,7 @@ import android.content.Context
 import android.content.Intent
 import android.media.AudioAttributes
 import android.os.Build
+import android.media.AudioManager
 import android.os.IBinder
 import android.speech.tts.TextToSpeech
 import android.util.Log
@@ -51,12 +52,27 @@ class ReminderService : LifecycleService(), TextToSpeech.OnInitListener {
         return super.onBind(intent)
     }
 
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        intent?.getStringExtra(EXTRA_SPEAK)?.let { text ->
+            speak(text)
+        }
+        return super.onStartCommand(intent, flags, startId)
+    }
+
     override fun onInit(status: Int) {
         if (status == TextToSpeech.SUCCESS) {
             val locale = Locale.getDefault()
             val result = tts?.setLanguage(locale)
             tts?.setPitch(0.5f)
             tts?.setSpeechRate(0.7f)
+            // Route audio via media stream and respect Bluetooth routing
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                val attrs = AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_MEDIA)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                    .build()
+                tts?.setAudioAttributes(attrs)
+            }
             if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
                 Log.e(TAG, "TTS language not supported")
             } else {
@@ -84,7 +100,7 @@ class ReminderService : LifecycleService(), TextToSpeech.OnInitListener {
         val pending = db.taskDao().getAllPending()
         if (pending.isEmpty()) return
         val now = nowMinutes()
-        val due = pending.filter { parseTimeMinutes(it.time) <= now }
+        val due = pending.filter { parseTimeMinutes(it.time) <= now && !it.completed }
         if (due.isNotEmpty()) {
             val message = buildString {
                 append("You have ")
@@ -98,7 +114,10 @@ class ReminderService : LifecycleService(), TextToSpeech.OnInitListener {
 
     private fun speak(text: String) {
         if (!ttsReady.get()) return
-        val params = BundleCompatHelper.audioParams()
+        // For legacy devices, ensure music stream; for L+ AudioAttributes above applies
+        val params = android.os.Bundle().apply {
+            putInt(TextToSpeech.Engine.KEY_PARAM_STREAM, AudioManager.STREAM_MUSIC)
+        }
         tts?.speak(text, TextToSpeech.QUEUE_ADD, params, System.currentTimeMillis().toString())
     }
 
@@ -130,9 +149,21 @@ class ReminderService : LifecycleService(), TextToSpeech.OnInitListener {
     companion object {
         private const val TAG = "ReminderService"
         private const val NOTIF_ID = 101
+        private const val EXTRA_SPEAK = "extra_speak"
 
         fun start(context: Context) {
             val intent = Intent(context, ReminderService::class.java)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                context.startForegroundService(intent)
+            } else {
+                context.startService(intent)
+            }
+        }
+
+        fun requestSpeak(context: Context, text: String) {
+            val intent = Intent(context, ReminderService::class.java).apply {
+                putExtra(EXTRA_SPEAK, text)
+            }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 context.startForegroundService(intent)
             } else {

@@ -6,7 +6,9 @@ import androidx.room.PrimaryKey
 @Entity(tableName = "users")
 data class UserEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
-    val name: String
+    val name: String,
+    // Optional aHash string computed from enrolled face image
+    val faceHash: String? = null
 )
 
 @Entity(tableName = "tasks")

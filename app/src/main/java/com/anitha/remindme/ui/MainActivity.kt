@@ -18,6 +18,8 @@ import com.anitha.remindme.data.TaskEntity
 import com.anitha.remindme.data.UserEntity
 import com.anitha.remindme.databinding.ActivityMainBinding
 import com.anitha.remindme.reminder.ReminderService
+import android.content.Intent
+import com.anitha.remindme.face.FaceRecognitionActivity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -53,6 +55,17 @@ class MainActivity : AppCompatActivity() {
 
         binding.btnAddUser.setOnClickListener { showAddUserDialog() }
         binding.btnAddTask.setOnClickListener { addTask() }
+        findViewById<android.view.View>(com.anitha.remindme.R.id.btnEnrollFace).setOnClickListener {
+            val uid = selectedUserId
+            if (uid == null) {
+                Toast.makeText(this, "Please select a user first", Toast.LENGTH_SHORT).show()
+            } else {
+                startActivity(Intent(this, com.anitha.remindme.face.EnrollFaceActivity::class.java).putExtra("userId", uid))
+            }
+        }
+        findViewById<android.view.View>(com.anitha.remindme.R.id.btnScanFace).setOnClickListener {
+            startActivity(Intent(this, FaceRecognitionActivity::class.java))
+        }
 
         requestNeededPermissions()
         ReminderService.start(this)
@@ -73,8 +86,9 @@ class MainActivity : AppCompatActivity() {
         val permissions = mutableListOf<String>()
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) permissions.add(Manifest.permission.RECORD_AUDIO)
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) permissions.add(Manifest.permission.CAMERA)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            // Foreground service permission declared in manifest; no runtime prompt needed
+        if (Build.VERSION.SDK_INT >= 33) {
+            val pn = android.Manifest.permission.POST_NOTIFICATIONS
+            if (ActivityCompat.checkSelfPermission(this, pn) != PackageManager.PERMISSION_GRANTED) permissions.add(pn)
         }
         if (permissions.isNotEmpty()) permissionsLauncher.launch(permissions.toTypedArray())
     }
@@ -187,7 +201,7 @@ class MainActivity : AppCompatActivity() {
     }
 }
 
-private fun androidx.appcompat.widget.AppCompatSpinner.setOnItemSelectedListenerCompat(onSelected: (Int) -> Unit) {
+private fun android.widget.Spinner.setOnItemSelectedListenerCompat(onSelected: (Int) -> Unit) {
     this.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
         override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: android.view.View?, position: Int, id: Long) {
             onSelected(position)

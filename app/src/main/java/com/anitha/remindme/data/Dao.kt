@@ -13,6 +13,12 @@ interface UserDao {
 
     @Query("SELECT * FROM users ORDER BY name")
     suspend fun getUsers(): List<UserEntity>
+
+    @Query("UPDATE users SET faceHash = :hash WHERE id = :userId")
+    suspend fun updateFaceHash(userId: Long, hash: String?)
+
+    @Query("SELECT * FROM users WHERE faceHash IS NOT NULL")
+    suspend fun getEnrolledUsers(): List<UserEntity>
 }
 
 @Dao
