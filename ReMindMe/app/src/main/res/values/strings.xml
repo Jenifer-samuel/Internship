@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">ReMindMe</string>
+    <string name="permission_camera_rationale">Camera permission is required for face detection.</string>
+    <string name="permission_audio_rationale">Audio permission is required for Text-to-Speech.</string>
+    <string name="recognizing">Recognizing…</string>
+    <string name="enroll">Enroll</string>
+    <string name="name_hint">Person name</string>
+    <string name="reminder_hint">Reminder to whisper</string>
+</resources>
